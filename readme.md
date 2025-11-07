@@ -1,5 +1,5 @@
-# <div dir="rtl">🇸🇦 T-Arabic — عكس النص العربي بسهولة</div>
-# <div dir="ltr">🇬🇧 T-Arabic — Arabic Text Reverser</div>
+# <div dir="rtl">  T-Arabic — عكس النص العربي بسهولة</div>
+# <div dir="ltr">  T-Arabic — Arabic Text Reverser</div>
 
 ![Windows](https://img.shields.io/badge/Platform-Windows-blue) ![Python](https://img.shields.io/badge/Python-Bundled-orange) ![Version](https://img.shields.io/badge/Version-1.0.0-green)
 
