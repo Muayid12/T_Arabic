@@ -70,6 +70,9 @@ T-Arabic/
 - لا يحتاج مكتبات خارجية  
 </div>
 
+### 💡 Credit
+- Big Thanks to TripleA
+
 ---
 
 ## <div dir="ltr">🇬🇧 English Version</div>
@@ -101,6 +104,8 @@ It automatically reverses and reshapes Arabic text, then copies it to the clipbo
 |-----------|----------------------------|
 | `-`       | Toggle Click-Through mode  |
 | `Delete`  | Clear all text instantly   |
+| `Home`    | hide and and show          |
+
 
 ### 🧑‍💻 Developer Guide
 > ⚠️ Important: Python must be installed before building
@@ -135,4 +140,9 @@ T-Arabic/
 
 - Windows only  
 - No external dependencies required
+
+
+### 💡 Credit
+- Big Thanks to TripleA
+
 </div>
