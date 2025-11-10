@@ -208,14 +208,14 @@ settings_btn.bind("<Button-1>", lambda e: open_settings())
 
 # ===== معالجة الأحرف ر و ز =====
 def fix_raa_zay(text):
-    connected_letters = "بتثجحخسشصضطظعغفقكلمنهي"
     result = ""
-    for i, ch in enumerate(text):
-        if ch in ["ر", "ز"] and i > 0 and text[i - 1] in connected_letters:
+    for ch in text:
+        if ch in ["ر", "ز"]:
             result += "ـ" + ch
         else:
             result += ch
     return result
+
 
 # ===== نسخ تلقائي =====
 def auto_fix_copy(e=None):
