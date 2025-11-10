@@ -186,12 +186,12 @@ def open_settings():
     
     info_text = f"""
 
-تفعيل أو إيقاف: {settings['toggle_active_key']} (اضغط مرتين)
+تفعيل أو إيقاف: {settings['toggle_active_key']}
 تفعيل ميزة النقر عبر التطبيق أو لا: {settings['toggle_clickthrough_key']}
 مسح النص: {settings['clear_text_key']}
 التأخير بين الضغطتين (بالثواني): {settings['double_tap_delay']}
 
-Toggle Active: {settings['toggle_active_key']} (double-tap)
+Toggle Active: {settings['toggle_active_key']} 
 Toggle Click-Through: {settings['toggle_clickthrough_key']}
 Clear Text: {settings['clear_text_key']}
 Double-Tap Delay: {settings['double_tap_delay']}s
