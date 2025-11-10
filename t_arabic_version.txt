@@ -15,12 +15,12 @@ VSVersionInfo(
       StringTable('040904B0', [
         StringStruct('CompanyName', 'GamersUnity'),
         StringStruct('FileDescription', 'Type In Arabic'),
-        StringStruct('FileVersion', '1.0.0'),
+        StringStruct('FileVersion', '1.0.1'),
         StringStruct('InternalName', 'T-Arabic'),
         StringStruct('LegalCopyright', '© 2025 Breakdown (GamersUnity)'),
         StringStruct('OriginalFilename', 'T-Arabic.exe'),
         StringStruct('ProductName', 'T-Arabic'),
-        StringStruct('ProductVersion', '1.0.0'),
+        StringStruct('ProductVersion', '1.0.1'),
       ])
     ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
