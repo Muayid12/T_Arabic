@@ -1,7 +1,7 @@
 ; T-Arabic Installer Script
 [Setup]
 AppName=T-Arabic
-AppVersion=1.0
+AppVersion=1.1
 DefaultDirName={autopf}\T-Arabic
 DefaultGroupName=T-Arabic
 OutputBaseFilename=T-Arabic-Setup

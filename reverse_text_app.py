@@ -8,7 +8,10 @@ import json
 import os
 import time
 from pynput import keyboard
-
+import speech_recognition as sr
+import threading
+import sounddevice as sd  
+import numpy as np 
 
 DEFAULT_STATUS = f"✅ Active - ابدا الكتابة"
 
@@ -20,7 +23,9 @@ default_settings = {
     "toggle_active_key": "home",
     "toggle_clickthrough_key": "minus",
     "clear_text_key": "delete",
-    "double_tap_delay": 0.5
+    "voice_input_key": "f9",  
+    "double_tap_delay": 0.5,
+    "voice_language": "ar-SA"  
 }
 
 def load_settings():
@@ -70,7 +75,7 @@ def load_position():
         # Create default position file
         with open(position_file, "w") as f:
             json.dump({"x": 100, "y": 100}, f)
-        app.geometry("270x145+100")
+        app.geometry("270x145+100+100")
 
 def save_position():
     try:
@@ -98,6 +103,8 @@ is_active = True  # Start as active
 previous_window = None
 last_home_press = 0
 double_tap_delay = settings["double_tap_delay"]
+is_listening = False  # Track if currently recording
+stop_listening = False  # Flag to stop recording
 
 # ===== إخفاء من Alt+Tab =====
 style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
@@ -166,7 +173,7 @@ frame.pack(expand=True, fill="both", padx=8, pady=(0, 6))
 
 entry = tk.Text(frame, height=3, width=25, font=("Segoe UI", 12),
                 bg="#2b2b2b", fg="white", insertbackground="white",
-                wrap="word", relief="flat", bd=0, state="normal")  # Start enabled
+                wrap="word", relief="flat", bd=0, state="normal")
 entry.pack(pady=(6, 2), padx=6)
 entry.tag_configure("right", justify="right")
 entry.tag_add("right", "1.0", "end")
@@ -178,7 +185,7 @@ status.pack(pady=(0, 3))
 def open_settings():
     settings_win = ctk.CTkToplevel(app)
     settings_win.title("Keybind Settings")
-    settings_win.geometry("350x250")
+    settings_win.geometry("350x300")
     settings_win.attributes("-topmost", True)
     
     ctk.CTkLabel(settings_win, text="Edit settings.json to customize:", 
@@ -189,16 +196,19 @@ def open_settings():
 تفعيل أو إيقاف: {settings['toggle_active_key']}
 تفعيل ميزة النقر عبر التطبيق أو لا: {settings['toggle_clickthrough_key']}
 مسح النص: {settings['clear_text_key']}
+تسجيل صوت: {settings['voice_input_key']}
 التأخير بين الضغطتين (بالثواني): {settings['double_tap_delay']}
 
 Toggle Active: {settings['toggle_active_key']} 
 Toggle Click-Through: {settings['toggle_clickthrough_key']}
 Clear Text: {settings['clear_text_key']}
+Voice Input: {settings['voice_input_key']}
 Double-Tap Delay: {settings['double_tap_delay']}s
+Voice Language: {settings['voice_language']}
 
     """
     
-    ctk.CTkLabel(settings_win, text=info_text, font=("Segoe UI", 14), 
+    ctk.CTkLabel(settings_win, text=info_text, font=("Segoe UI", 12), 
                  justify="left").pack(pady=5)
     
     ctk.CTkButton(settings_win, text="Close & Restart App to Apply", 
@@ -215,7 +225,6 @@ def fix_raa_zay(text):
         else:
             result += ch
     return result
-
 
 # ===== نسخ تلقائي =====
 def auto_fix_copy(e=None):
@@ -243,7 +252,9 @@ def clear_text(event=None):
 
 # ===== Update Status Display =====
 def update_status():
-    if is_active:
+    if is_listening:
+        status.configure(text="🎤 جاري الاستماع...", text_color="orange")
+    elif is_active:
         text = entry.get("1.0", tk.END).strip()
         if text:
             status.configure(text="✅ نشط - تم النسخ", text_color="lightgreen")
@@ -252,6 +263,126 @@ def update_status():
     else:
         status.configure(text=f"⌨️ Press {settings['toggle_active_key']} twice to activate", 
                         text_color="gray")
+
+# ===== Voice Input Function - FIXED VERSION =====
+def stop_voice_recording():
+    """Stop the current voice recording"""
+    global stop_listening
+    stop_listening = True
+    status.configure(text="⏹️ جاري الإيقاف...", text_color="orange")
+
+def voice_to_text():
+    """Convert voice to text using Google Speech Recognition - FIXED for EXE packaging"""
+    global is_listening, stop_listening
+    
+    if not is_active:
+        return
+    
+    # Clear text before starting new recording
+    entry.delete("1.0", "end")
+    stop_listening = False
+    
+    def listen_thread():
+        global is_listening, stop_listening
+        recognizer = sr.Recognizer()
+        
+        try:
+            is_listening = True
+            app.after(0, update_status)
+            
+            print("Listening... Press F9 again to stop")
+            
+            # Recording parameters
+            RATE = 16000
+            CHANNELS = 1
+            recorded_frames = []
+            
+            # Callback to collect audio
+            def audio_callback(indata, frames, time_info, status_flag):
+                if status_flag:
+                    print(f"Audio status: {status_flag}")
+                if not stop_listening:
+                    recorded_frames.append(indata.copy())
+            
+            # Start recording stream using sounddevice
+            with sd.InputStream(samplerate=RATE, channels=CHANNELS, 
+                              dtype='int16', callback=audio_callback):
+                # Keep recording until stopped
+                while not stop_listening:
+                    sd.sleep(100)  # Check every 100ms
+            
+            # Process recorded audio
+            if recorded_frames:
+                print("Processing audio...")
+                app.after(0, lambda: status.configure(text="⏳ جاري المعالجة...", text_color="yellow"))
+                
+                # Concatenate all recorded frames
+                audio_data = np.concatenate(recorded_frames, axis=0)
+                
+                # Convert to bytes (int16 format)
+                audio_bytes = audio_data.tobytes()
+                
+                # Create AudioData object for speech_recognition
+                audio = sr.AudioData(audio_bytes, RATE, 2)  # 2 bytes per sample (int16)
+                
+                # Recognize speech using Google
+                text = recognizer.recognize_google(audio, language=settings['voice_language'])
+                print(f"Recognized: {text}")
+                
+                # Insert text into entry
+                app.after(0, lambda: insert_voice_text(text))
+            else:
+                print("No audio recorded")
+                app.after(0, lambda: status.configure(text="⚠️ لم يتم تسجيل صوت", text_color="red"))
+                app.after(2000, update_status)
+                
+        except sr.UnknownValueError:
+            print("Could not understand audio")
+            app.after(0, lambda: status.configure(text="⚠️ لم يتم فهم الصوت", text_color="red"))
+            app.after(2000, update_status)
+        except sr.RequestError as e:
+            print(f"Error with speech recognition service: {e}")
+            app.after(0, lambda: status.configure(text="❌ خطأ في الاتصال", text_color="red"))
+            app.after(2000, update_status)
+        except Exception as e:
+            print(f"Microphone error: {e}")
+            # More detailed error for debugging
+            import traceback
+            error_details = traceback.format_exc()
+            print(error_details)
+            # Save error to file for user debugging
+            try:
+                with open("microphone_error.txt", "w", encoding="utf-8") as f:
+                    f.write(error_details)
+            except:
+                pass
+            app.after(0, lambda: status.configure(text="❌ خطأ في المايك", text_color="red"))
+            app.after(2000, update_status)
+        finally:
+            is_listening = False
+            stop_listening = False
+            app.after(0, update_status)
+    
+    # Run in separate thread to avoid blocking UI
+    thread = threading.Thread(target=listen_thread, daemon=True)
+    thread.start()
+
+def insert_voice_text(text):
+    """Insert voice-recognized text into entry"""
+    if is_active:
+        # Check if text contains Arabic characters
+        has_arabic = any('\u0600' <= char <= '\u06FF' for char in text)
+        
+        if has_arabic:
+            # Process as Arabic text (apply reshaping)
+            entry.insert("1.0", text)
+            align_right_live()
+        else:
+            # Insert as English (left-to-right, no reshaping)
+            entry.insert("1.0", text)
+            # Don't apply Arabic processing, just copy as-is
+            pyperclip.copy(text)
+            update_status()
 
 # ===== Helper Functions =====
 def set_entry_focus():
@@ -325,7 +456,6 @@ def toggle_active():
         app.after(100, set_entry_focus)
         update_status()
 
-
 # ===== Key Mapping Helper =====
 def get_key_from_string(key_str):
     """Convert string to pynput key object"""
@@ -344,7 +474,7 @@ def get_key_from_string(key_str):
         'tab': keyboard.Key.tab,
         'esc': keyboard.Key.esc,
         'space': keyboard.Key.space,
-        'minus': '-',  # <-- FIXED
+        'minus': '-',
     }
     
     # F keys
@@ -363,21 +493,21 @@ def get_key_from_string(key_str):
 # ===== Global Hotkeys with pynput =====
 def on_press(key):
     try:
-        # Get string representation of pressed key
+        
         key_str = None
         if hasattr(key, 'char') and key.char:
             key_str = key.char.lower()
         elif hasattr(key, 'name'):
             key_str = key.name.lower()
         
-        # Toggle active
+        
         toggle_key = get_key_from_string(settings['toggle_active_key'])
         if (isinstance(toggle_key, str) and key_str == toggle_key) or \
            (not isinstance(toggle_key, str) and key == toggle_key):
             app.after(0, toggle_active)
             return
         
-        # Toggle click-through
+        
         clickthrough_key = get_key_from_string(settings['toggle_clickthrough_key'])
         if (isinstance(clickthrough_key, str) and key_str == clickthrough_key) or \
            (not isinstance(clickthrough_key, str) and key == clickthrough_key):
@@ -385,12 +515,25 @@ def on_press(key):
             app.after(0, toggle_click_through)
             return
         
-        # Clear text
+       
         clear_key = get_key_from_string(settings['clear_text_key'])
         if (isinstance(clear_key, str) and key_str == clear_key) or \
            (not isinstance(clear_key, str) and key == clear_key):
             app.after(0, clear_text)
             return
+        
+      
+        voice_key = get_key_from_string(settings['voice_input_key'])
+        if (isinstance(voice_key, str) and key_str == voice_key) or \
+           (not isinstance(voice_key, str) and key == voice_key):
+            if is_listening:
+                # Stop recording
+                app.after(0, stop_voice_recording)
+            else:
+                # Start recording
+                app.after(0, voice_to_text)
+            return
+            
     except Exception as e:
         print(f"Error in on_press: {e}")
 
